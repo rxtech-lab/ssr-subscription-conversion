@@ -4,12 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "bun db:migrate && next build",
+    "build": "bun db:push && next build",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
+    "db:push": "drizzle-kit push",
     "test": "vitest"
   },
   "dependencies": {

@@ -13,15 +13,15 @@ A web application for importing, managing, and converting proxy subscription con
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 16 (App Router) |
-| UI | React 19, Tailwind CSS v4, shadcn/ui |
-| Database | Turso (LibSQL/SQLite) via Drizzle ORM |
-| Auth | NextAuth v5 (OIDC) |
-| AI | Vercel AI SDK + Google Gemini |
-| Testing | Vitest |
-| Runtime | Bun |
+| Layer     | Technology                            |
+| --------- | ------------------------------------- |
+| Framework | Next.js 16 (App Router)               |
+| UI        | React 19, Tailwind CSS v4, shadcn/ui  |
+| Database  | Turso (LibSQL/SQLite) via Drizzle ORM |
+| Auth      | NextAuth v5 (OIDC)                    |
+| AI        | Vercel AI SDK + Google Gemini         |
+| Testing   | Vitest                                |
+| Runtime   | Bun                                   |
 
 ## Getting Started
 
@@ -82,15 +82,15 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Scripts
 
-| Command | Description |
-|---|---|
-| `bun dev` | Start development server |
-| `bun build` | Build for production |
-| `bun start` | Start production server |
-| `bun test` | Run tests with Vitest |
+| Command           | Description                             |
+| ----------------- | --------------------------------------- |
+| `bun dev`         | Start development server                |
+| `bun build`       | Build for production                    |
+| `bun start`       | Start production server                 |
+| `bun test`        | Run tests with Vitest                   |
 | `bun db:generate` | Generate Drizzle migrations from schema |
-| `bun db:migrate` | Apply pending migrations |
-| `bun db:studio` | Open Drizzle Studio |
+| `bun db:migrate`  | Apply pending migrations                |
+| `bun db:studio`   | Open Drizzle Studio                     |
 
 ## Subscription API
 
@@ -102,11 +102,11 @@ GET /api/sub/<token>
 
 The response format and `Content-Type` are determined by the `outputFormat` stored with the link:
 
-| Format | Content-Type | Extension |
-|---|---|---|
-| `surge` | `text/plain` | `.conf` |
-| `clash` | `text/yaml; charset=utf-8` | `.yaml` |
-| `v2ray` | `text/plain` | `.txt` |
+| Format  | Content-Type               | Extension |
+| ------- | -------------------------- | --------- |
+| `surge` | `text/plain`               | `.conf`   |
+| `clash` | `text/yaml; charset=utf-8` | `.yaml`   |
+| `v2ray` | `text/plain`               | `.txt`    |
 
 ## Supported Proxy Types
 

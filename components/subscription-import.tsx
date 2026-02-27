@@ -47,7 +47,9 @@ const formatVariants: Record<
   unknown: "destructive",
 };
 
-export function SubscriptionImport({ trigger }: { trigger?: React.ReactNode } = {}) {
+export function SubscriptionImport({
+  trigger,
+}: { trigger?: React.ReactNode } = {}) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
@@ -92,7 +94,7 @@ export function SubscriptionImport({ trigger }: { trigger?: React.ReactNode } = 
       };
       reader.readAsText(file);
     },
-    [name]
+    [name],
   );
 
   const handleSubmit = async () => {
@@ -116,7 +118,7 @@ export function SubscriptionImport({ trigger }: { trigger?: React.ReactNode } = 
       const subscriptionId = await importSubscription(
         content,
         name.trim(),
-        override
+        override,
       );
       setOpen(false);
       setContent("");
@@ -125,7 +127,7 @@ export function SubscriptionImport({ trigger }: { trigger?: React.ReactNode } = 
       router.push(`/subscriptions/${subscriptionId}`);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to import subscription."
+        err instanceof Error ? err.message : "Failed to import subscription.",
       );
     } finally {
       setLoading(false);
@@ -255,7 +257,7 @@ export function SubscriptionImport({ trigger }: { trigger?: React.ReactNode } = 
               <Button
                 onClick={handleSubmit}
                 disabled={
-                  loading || (!activeFormat || activeFormat === "unknown")
+                  loading || !activeFormat || activeFormat === "unknown"
                 }
               >
                 {loading ? "Importing..." : "Import"}

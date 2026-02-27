@@ -18,6 +18,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Subscription Converter",
   description: "Convert between Surge, Clash, and V2Ray subscription formats",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

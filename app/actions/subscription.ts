@@ -436,6 +436,82 @@ export async function deleteProxyGroup(groupId: string) {
   await db.delete(proxyGroups).where(eq(proxyGroups.id, groupId));
 }
 
+// ─── Rule CRUD ──────────────────────────────────────────────────────────────
+
+async function getMaxRuleSortOrder(subscriptionId: string): Promise<number> {
+  const [result] = await db
+    .select({ maxOrder: max(rules.sortOrder) })
+    .from(rules)
+    .where(eq(rules.subscriptionId, subscriptionId));
+  return (result?.maxOrder ?? -1) + 1;
+}
+
+export async function addRule(
+  subscriptionId: string,
+  data: {
+    ruleType: string;
+    value?: string;
+    target: string;
+    comment?: string;
+  }
+) {
+  const userId = await requireAuth();
+  await requireSubscriptionOwnership(subscriptionId, userId);
+
+  const sortOrder = await getMaxRuleSortOrder(subscriptionId);
+
+  await db.insert(rules).values({
+    subscriptionId,
+    ruleType: data.ruleType,
+    value: data.value ?? null,
+    target: data.target,
+    comment: data.comment ?? null,
+    sortOrder,
+  });
+}
+
+export async function updateRule(
+  ruleId: string,
+  data: {
+    ruleType?: string;
+    value?: string | null;
+    target?: string;
+    comment?: string | null;
+  }
+) {
+  const userId = await requireAuth();
+
+  const [ruleRow] = await db
+    .select()
+    .from(rules)
+    .where(eq(rules.id, ruleId));
+
+  if (!ruleRow) throw new Error("Rule not found");
+  await requireSubscriptionOwnership(ruleRow.subscriptionId, userId);
+
+  const updates: Record<string, unknown> = {};
+  if (data.ruleType !== undefined) updates.ruleType = data.ruleType;
+  if (data.value !== undefined) updates.value = data.value;
+  if (data.target !== undefined) updates.target = data.target;
+  if (data.comment !== undefined) updates.comment = data.comment;
+
+  await db.update(rules).set(updates).where(eq(rules.id, ruleId));
+}
+
+export async function deleteRule(ruleId: string) {
+  const userId = await requireAuth();
+
+  const [ruleRow] = await db
+    .select()
+    .from(rules)
+    .where(eq(rules.id, ruleId));
+
+  if (!ruleRow) throw new Error("Rule not found");
+  await requireSubscriptionOwnership(ruleRow.subscriptionId, userId);
+
+  await db.delete(rules).where(eq(rules.id, ruleId));
+}
+
 // ─── Import helpers ──────────────────────────────────────────────────────────
 
 export async function getSubscriptionItems(subscriptionId: string) {

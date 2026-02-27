@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -466,12 +466,17 @@ function LinksSection({
   const [qrCodeId, setQrCodeId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [origin, setOrigin] = useState("");
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
   const getSubscriptionUrl = useCallback(
     (token: string) => {
-      if (typeof window === "undefined") return "";
-      return `${window.location.origin}/api/sub/${token}`;
+      if (!origin) return "";
+      return `${origin}/api/sub/${token}`;
     },
-    []
+    [origin]
   );
 
   const handleGenerate = async () => {

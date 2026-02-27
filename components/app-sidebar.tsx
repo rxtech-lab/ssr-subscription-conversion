@@ -6,10 +6,8 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Home09Icon,
   Logout03Icon,
-  FileImportIcon,
 } from "@hugeicons/core-free-icons";
 import { signOutAction } from "@/app/actions/auth";
-import { SubscriptionImport } from "@/components/subscription-import";
 import {
   Sidebar,
   SidebarContent,
@@ -92,16 +90,6 @@ export function AppSidebar({
 
       <SidebarFooter>
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SubscriptionImport
-              trigger={
-                <SidebarMenuButton>
-                  <HugeiconsIcon icon={FileImportIcon} />
-                  <span>Import Subscription</span>
-                </SidebarMenuButton>
-              }
-            />
-          </SidebarMenuItem>
           <SidebarMenuItem>
             <form action={signOutAction}>
               <SidebarMenuButton type="submit">

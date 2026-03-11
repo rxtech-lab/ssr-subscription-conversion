@@ -54,6 +54,9 @@ function formatRuleLine(rule: Rule): string {
   let line: string;
   if (type === 'FINAL') {
     line = `FINAL,${target}`;
+  } else if (value === undefined || value === null) {
+    // Two-part rule (no value), e.g. AND/OR conditions
+    line = `${type},${target}`;
   } else {
     line = `${type},${value},${target}`;
   }

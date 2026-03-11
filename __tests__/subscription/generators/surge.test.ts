@@ -222,5 +222,35 @@ describe('generateSurge', () => {
       expect(result).toContain('Trojan = trojan, t.example.com, 443, password=trojan-pass');
       expect(result).toContain('sni=t.example.com');
     });
+
+    it('should format DOMAIN-SET rule with URL value', () => {
+      const config: SubscriptionConfig = {
+        general: {},
+        servers: [],
+        proxyGroups: [],
+        rules: [
+          { type: 'DOMAIN-SET', value: 'https://example.com/domains.txt', target: 'Proxy' },
+        ],
+        hosts: [],
+      };
+      const result = generateSurge(config);
+      expect(result).toContain('DOMAIN-SET,https://example.com/domains.txt,Proxy');
+      expect(result).not.toContain('undefined');
+    });
+
+    it('should handle rule with undefined value gracefully', () => {
+      const config: SubscriptionConfig = {
+        general: {},
+        servers: [],
+        proxyGroups: [],
+        rules: [
+          { type: 'DOMAIN-SET', target: 'Proxy' },
+        ],
+        hosts: [],
+      };
+      const result = generateSurge(config);
+      expect(result).not.toContain('undefined');
+      expect(result).toContain('DOMAIN-SET,Proxy');
+    });
   });
 });

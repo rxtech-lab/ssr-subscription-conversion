@@ -93,6 +93,9 @@ function buildClashRule(rule: Rule): string {
   if (rule.type === 'FINAL') {
     return `MATCH,${rule.target}`;
   }
+  if (rule.value === undefined || rule.value === null) {
+    return `${rule.type},${rule.target}`;
+  }
   return `${rule.type},${rule.value},${rule.target}`;
 }
 

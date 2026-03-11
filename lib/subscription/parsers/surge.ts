@@ -319,9 +319,9 @@ function parseRules(lines: string[]): Rule[] {
     let comment: string | undefined;
     let mainPart = line;
 
-    const commentIdx = line.indexOf('//');
+    const commentIdx = line.indexOf(' //');
     if (commentIdx >= 0) {
-      comment = line.substring(commentIdx + 2).trim();
+      comment = line.substring(commentIdx + 3).trim();
       mainPart = line.substring(0, commentIdx).trim();
     }
 

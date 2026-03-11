@@ -201,5 +201,40 @@ DOMAIN-SUFFIX,google.com,Proxy // Google services`);
       expect(result.rules[0].target).toBe('Proxy');
       expect(result.rules[0].comment).toBe('Google services');
     });
+
+    it('should parse DOMAIN-SET rules with URL values correctly', () => {
+      const result = parseSurge(`[Rule]
+DOMAIN-SET,https://example.com/domains.txt,Proxy
+DOMAIN-SET,https://cdn.example.com/list.txt,DIRECT`);
+
+      expect(result.rules).toHaveLength(2);
+      expect(result.rules[0].type).toBe('DOMAIN-SET');
+      expect(result.rules[0].value).toBe('https://example.com/domains.txt');
+      expect(result.rules[0].target).toBe('Proxy');
+      expect(result.rules[1].type).toBe('DOMAIN-SET');
+      expect(result.rules[1].value).toBe('https://cdn.example.com/list.txt');
+      expect(result.rules[1].target).toBe('DIRECT');
+    });
+
+    it('should parse RULE-SET rules with URL values correctly', () => {
+      const result = parseSurge(`[Rule]
+RULE-SET,https://example.com/rules.list,Proxy`);
+
+      expect(result.rules).toHaveLength(1);
+      expect(result.rules[0].type).toBe('RULE-SET');
+      expect(result.rules[0].value).toBe('https://example.com/rules.list');
+      expect(result.rules[0].target).toBe('Proxy');
+    });
+
+    it('should parse rules with URL values and comments correctly', () => {
+      const result = parseSurge(`[Rule]
+DOMAIN-SET,https://example.com/domains.txt,Proxy // External domain list`);
+
+      expect(result.rules).toHaveLength(1);
+      expect(result.rules[0].type).toBe('DOMAIN-SET');
+      expect(result.rules[0].value).toBe('https://example.com/domains.txt');
+      expect(result.rules[0].target).toBe('Proxy');
+      expect(result.rules[0].comment).toBe('External domain list');
+    });
   });
 });

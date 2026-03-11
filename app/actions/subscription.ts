@@ -197,6 +197,19 @@ export async function getSubscription(id: string) {
   };
 }
 
+// ─── renameSubscription ─────────────────────────────────────────────────────
+
+export async function renameSubscription(id: string, newName: string) {
+  const userId = await requireAuth();
+
+  await requireSubscriptionOwnership(id, userId);
+
+  await db
+    .update(subscriptions)
+    .set({ name: newName })
+    .where(eq(subscriptions.id, id));
+}
+
 // ─── deleteSubscription ─────────────────────────────────────────────────────
 
 export async function deleteSubscription(id: string) {

@@ -184,6 +184,7 @@ export function SubscriptionList({
             onKeyDown={(e) => {
               if (e.key === "Enter") handleRename();
             }}
+            aria-label="New subscription name"
             autoFocus
           />
           <DialogFooter>

@@ -729,6 +729,7 @@ export function SubscriptionDetail({
                     setIsEditingName(false);
                   }
                 }}
+                aria-label="Edit subscription name"
                 autoFocus
               />
             ) : (

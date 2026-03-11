@@ -200,6 +200,10 @@ export async function getSubscription(id: string) {
 // ─── renameSubscription ─────────────────────────────────────────────────────
 
 export async function renameSubscription(id: string, newName: string) {
+  if (!newName.trim()) {
+    throw new Error("Name cannot be empty");
+  }
+
   const userId = await requireAuth();
 
   await requireSubscriptionOwnership(id, userId);

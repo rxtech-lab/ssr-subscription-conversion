@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { deleteSubscription } from "@/app/actions/subscription";
+import { deleteSubscription, renameSubscription } from "@/app/actions/subscription";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -23,6 +24,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Subscription {
   id: string;
@@ -59,10 +68,31 @@ export function SubscriptionList({
   subscriptions: Subscription[];
 }) {
   const router = useRouter();
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [renameTarget, setRenameTarget] = useState<Subscription | null>(null);
+  const [newName, setNewName] = useState("");
 
   const handleDelete = async (id: string) => {
     try {
       await deleteSubscription(id);
+      router.refresh();
+    } catch {
+      // Error handling silently — could add toast later
+    }
+  };
+
+  const openRenameDialog = (sub: Subscription) => {
+    setRenameTarget(sub);
+    setNewName(sub.name);
+    setRenameDialogOpen(true);
+  };
+
+  const handleRename = async () => {
+    if (!renameTarget || !newName.trim()) return;
+    try {
+      await renameSubscription(renameTarget.id, newName.trim());
+      setRenameDialogOpen(false);
+      setRenameTarget(null);
       router.refresh();
     } catch {
       // Error handling silently — could add toast later
@@ -101,6 +131,9 @@ export function SubscriptionList({
             </CardDescription>
             <CardAction>
               <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => openRenameDialog(sub)}>
+                  Rename
+                </Button>
                 <Button variant="outline" size="sm" asChild>
                   <Link href={`/subscriptions/${sub.id}`}>View</Link>
                 </Button>
@@ -135,6 +168,35 @@ export function SubscriptionList({
           </CardHeader>
         </Card>
       ))}
+
+      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Subscription</DialogTitle>
+            <DialogDescription>
+              Enter a new name for &ldquo;{renameTarget?.name}&rdquo;.
+            </DialogDescription>
+          </DialogHeader>
+          <input
+            className="w-full rounded-md border border-input bg-input/30 px-3 py-2 text-sm outline-none focus:border-ring focus:ring-[3px] focus:ring-ring/50"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleRename();
+            }}
+            aria-label="New subscription name"
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRename} disabled={!newName.trim()}>
+              Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

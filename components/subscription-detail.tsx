@@ -10,6 +10,7 @@ import {
   Delete01Icon,
   PlusSignIcon,
   Download01Icon,
+  Copy01Icon,
 } from "@hugeicons/core-free-icons";
 import {
   deleteSubscription,
@@ -151,6 +152,7 @@ function ServersSection({
   const [formOpen, setFormOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editServer, setEditServer] = useState<ServerWithId | undefined>();
+  const [copiedServerId, setCopiedServerId] = useState<string | null>(null);
 
   const handleEdit = (server: ServerWithId) => {
     setEditServer(server);
@@ -165,6 +167,16 @@ function ServersSection({
   const handleDelete = async (serverId: string) => {
     await deleteServer(serverId);
     router.refresh();
+  };
+
+  const handleCopyServerId = async (serverId: string) => {
+    try {
+      await navigator.clipboard.writeText(serverId);
+      setCopiedServerId(serverId);
+      setTimeout(() => setCopiedServerId(null), 2000);
+    } catch {
+      // Clipboard access can fail in non-secure contexts.
+    }
   };
 
   return (
@@ -199,7 +211,25 @@ function ServersSection({
             <tbody>
               {servers.map((server) => (
                 <tr key={server.id} className="border-b last:border-0">
-                  <td className="px-4 py-2 font-mono text-xs">{server.name}</td>
+                  <td className="px-4 py-2 font-mono text-xs">
+                    <div className="space-y-1">
+                      <div>{server.name}</div>
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <span>ID: {server.id}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="size-5"
+                          onClick={() => handleCopyServerId(server.id)}
+                          aria-label={`Copy server ID for ${server.name}`}
+                          title="Copy server ID"
+                        >
+                          <HugeiconsIcon icon={Copy01Icon} size={12} />
+                        </Button>
+                        {copiedServerId === server.id && <span>Copied</span>}
+                      </div>
+                    </div>
+                  </td>
                   <td className="px-4 py-2">
                     <Badge variant="outline" className="uppercase text-[10px]">
                       {server.type}

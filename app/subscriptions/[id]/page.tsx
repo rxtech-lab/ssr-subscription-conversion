@@ -8,19 +8,21 @@ export default async function SubscriptionPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  let subscription: Awaited<ReturnType<typeof getSubscription>>;
+  let links: Awaited<ReturnType<typeof getLinks>>;
 
   try {
-    const [subscription, links] = await Promise.all([
+    [subscription, links] = await Promise.all([
       getSubscription(id),
       getLinks(id),
     ]);
-
-    return (
-      <div className="mx-auto max-w-4xl">
-        <SubscriptionDetail subscription={subscription} links={links} />
-      </div>
-    );
   } catch {
     notFound();
   }
+
+  return (
+    <div className="mx-auto max-w-4xl">
+      <SubscriptionDetail subscription={subscription} links={links} />
+    </div>
+  );
 }

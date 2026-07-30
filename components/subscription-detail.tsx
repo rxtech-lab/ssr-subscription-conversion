@@ -14,6 +14,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import {
   deleteSubscription,
+  renameSubscription,
   generateLink,
   deleteLink,
   deleteServer,
@@ -704,6 +705,8 @@ export function SubscriptionDetail({
   links: LinkData[];
 }) {
   const router = useRouter();
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(subscription.name);
 
   const handleDeleteSubscription = async () => {
     try {
@@ -711,6 +714,23 @@ export function SubscriptionDetail({
       router.push("/subscriptions");
     } catch {
       // Silent error handling
+    }
+  };
+
+  const handleRename = async () => {
+    const trimmed = editedName.trim();
+    if (!trimmed || trimmed === subscription.name) {
+      setEditedName(subscription.name);
+      setIsEditingName(false);
+      return;
+    }
+    try {
+      await renameSubscription(subscription.id, trimmed);
+      setIsEditingName(false);
+      router.refresh();
+    } catch {
+      setEditedName(subscription.name);
+      setIsEditingName(false);
     }
   };
 
@@ -725,7 +745,37 @@ export function SubscriptionDetail({
               Back
             </Link>
           </Button>
-          <h1 className="text-2xl font-bold">{subscription.name}</h1>
+          <div className="flex items-center gap-2">
+            {isEditingName ? (
+              <input
+                className="text-2xl font-bold bg-transparent border-b border-foreground/30 focus:border-foreground outline-none"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                onBlur={handleRename}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleRename();
+                  if (e.key === "Escape") {
+                    setEditedName(subscription.name);
+                    setIsEditingName(false);
+                  }
+                }}
+                aria-label="Edit subscription name"
+                autoFocus
+              />
+            ) : (
+              <>
+                <h1 className="text-2xl font-bold">{subscription.name}</h1>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setIsEditingName(true)}
+                >
+                  <HugeiconsIcon icon={PencilEdit01Icon} size={14} />
+                </Button>
+              </>
+            )}
+          </div>
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <Badge
               variant={formatVariants[subscription.sourceType] ?? "outline"}

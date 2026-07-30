@@ -12,6 +12,7 @@ import {
   updateServer,
   deleteServer,
   deleteSubscription,
+  renameSubscription,
   generateLink,
   getLinks,
   deleteLink,
@@ -164,6 +165,20 @@ export async function POST(req: Request) {
         }),
         execute: async ({ subscriptionId }) => {
           await deleteSubscription(subscriptionId);
+          return { success: true };
+        },
+      }),
+
+      rename_subscription: tool({
+        description: "Rename a subscription",
+        inputSchema: z.object({
+          subscriptionId: z
+            .string()
+            .describe("The subscription ID to rename"),
+          newName: z.string().describe("The new name for the subscription"),
+        }),
+        execute: async ({ subscriptionId, newName }) => {
+          await renameSubscription(subscriptionId, newName);
           return { success: true };
         },
       }),

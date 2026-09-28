@@ -27,6 +27,52 @@ const SS_KEY_MAP: Record<string, string> = {
   'udp-relay': 'udp',
 };
 
+/**
+ * Copy settings onto a VMess/Trojan Clash proxy, translating Surge-style keys
+ * (ws, ws-path, ws-headers, sni, udp-relay) into their Clash equivalents.
+ */
+function applySurgeTransportSettings(
+  base: Record<string, unknown>,
+  settings: ProxyServer['settings'],
+  sniKey: 'servername' | 'sni'
+): void {
+  const wsOpts: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(settings)) {
+    switch (key) {
+      case 'ws':
+        if (coerceValue(value) === true) base['network'] = 'ws';
+        break;
+      case 'ws-path':
+        wsOpts['path'] = String(value);
+        break;
+      case 'ws-headers': {
+        // Surge format: "Host:example.com|User-Agent:foo"
+        const headers: Record<string, string> = {};
+        for (const pair of String(value).split('|')) {
+          const idx = pair.indexOf(':');
+          if (idx > 0) headers[pair.slice(0, idx).trim()] = pair.slice(idx + 1).trim();
+        }
+        if (Object.keys(headers).length > 0) wsOpts['headers'] = headers;
+        break;
+      }
+      case 'sni':
+        base[sniKey] = String(value);
+        break;
+      case 'udp-relay':
+        base['udp'] = coerceValue(value);
+        break;
+      default:
+        base[key] = coerceValue(value);
+    }
+  }
+
+  if (Object.keys(wsOpts).length > 0) {
+    base['network'] = 'ws';
+    base['ws-opts'] = { ...(base['ws-opts'] as Record<string, unknown> | undefined), ...wsOpts };
+  }
+}
+
 function buildClashProxy(server: ProxyServer): Record<string, unknown> | null {
   if (server.type === 'direct' || server.type === 'reject') {
     return null;
@@ -45,20 +91,28 @@ function buildClashProxy(server: ProxyServer): Record<string, unknown> | null {
         const clashKey = SS_KEY_MAP[key] || key;
         base[clashKey] = coerceValue(value);
       }
+      if (base['password'] !== undefined) base['password'] = String(base['password']);
       break;
     }
 
     case 'vmess': {
-      for (const [key, value] of Object.entries(server.settings)) {
-        base[key] = coerceValue(value);
+      applySurgeTransportSettings(base, server.settings, 'servername');
+      // Surge stores the VMess UUID as `username`
+      if (base['uuid'] === undefined && base['username'] !== undefined) {
+        base['uuid'] = String(base['username']);
       }
+      delete base['username'];
+      if (base['uuid'] !== undefined) base['uuid'] = String(base['uuid']);
+      // Surge's vmess-aead=true means alterId 0; Clash requires both fields
+      delete base['vmess-aead'];
+      if (base['alterId'] === undefined) base['alterId'] = 0;
+      if (base['cipher'] === undefined) base['cipher'] = 'auto';
       break;
     }
 
     case 'trojan': {
-      for (const [key, value] of Object.entries(server.settings)) {
-        base[key] = coerceValue(value);
-      }
+      applySurgeTransportSettings(base, server.settings, 'sni');
+      if (base['password'] !== undefined) base['password'] = String(base['password']);
       break;
     }
 

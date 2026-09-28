@@ -252,3 +252,56 @@ describe('generateClash', () => {
     });
   });
 });
+
+describe('generateClash - Surge-style VMess/Trojan settings', () => {
+  const config: SubscriptionConfig = {
+    general: {},
+    servers: [
+      {
+        name: 'VMess',
+        type: 'vmess',
+        server: 'v.example.com',
+        port: 443,
+        settings: {
+          username: '123e4567-e89b-12d3-a456-426614174000',
+          ws: true,
+          'ws-path': '/ray',
+          'ws-headers': 'Host:cdn.example.com',
+          tls: true,
+          sni: 'cdn.example.com',
+          'vmess-aead': true,
+        },
+      },
+      {
+        name: 'Trojan',
+        type: 'trojan',
+        server: 't.example.com',
+        port: 443,
+        settings: { password: '123456', sni: 't.example.com', 'udp-relay': true },
+      },
+    ],
+    proxyGroups: [],
+    rules: [],
+    hosts: [],
+  };
+  const parsed = yaml.load(generateClash(config)) as { proxies: Record<string, unknown>[] };
+
+  it('maps Surge username to uuid and fills required VMess fields', () => {
+    const vmess = parsed.proxies[0];
+    expect(vmess.uuid).toBe('123e4567-e89b-12d3-a456-426614174000');
+    expect(vmess.username).toBeUndefined();
+    expect(vmess['vmess-aead']).toBeUndefined();
+    expect(vmess.alterId).toBe(0);
+    expect(vmess.cipher).toBe('auto');
+    expect(vmess.network).toBe('ws');
+    expect(vmess['ws-opts']).toEqual({ path: '/ray', headers: { Host: 'cdn.example.com' } });
+    expect(vmess.servername).toBe('cdn.example.com');
+  });
+
+  it('keeps trojan password a string and maps udp-relay', () => {
+    const trojan = parsed.proxies[1];
+    expect(trojan.password).toBe('123456');
+    expect(trojan.sni).toBe('t.example.com');
+    expect(trojan.udp).toBe(true);
+  });
+});

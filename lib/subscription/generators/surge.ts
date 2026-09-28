@@ -20,8 +20,8 @@ function formatServerLine(server: ProxyServer): string {
       return `${name} = ss, ${host}, ${port}, ${settingsParts.join(', ')}`;
 
     case 'vmess':
-      return `${name} = vmess, ${host}, ${port}, username=${settings.uuid}, ${Object.entries(settings)
-        .filter(([key]) => key !== 'uuid')
+      return `${name} = vmess, ${host}, ${port}, username=${settings.uuid ?? settings.username}, ${Object.entries(settings)
+        .filter(([key]) => key !== 'uuid' && key !== 'username')
         .map(([key, value]) => `${key}=${value}`)
         .join(', ')}`;
 

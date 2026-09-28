@@ -79,7 +79,7 @@ function buildClashProxy(server: ProxyServer): Record<string, unknown> | null {
   }
 
   const base: Record<string, unknown> = {
-    name: server.name,
+    name: unquote(server.name),
     type: server.type,
     server: server.server,
     port: server.port,
@@ -130,13 +130,21 @@ function buildClashProxy(server: ProxyServer): Record<string, unknown> | null {
  * Clash has no named direct/reject proxies (they are dropped from `proxies`),
  * so references to them must point at the built-in DIRECT/REJECT policies.
  */
+/** Strip surrounding quotes that Surge allows around names and values. */
+function unquote(value: string): string {
+  const trimmed = value.trim();
+  const match = /^(["'])(.*)\1$/.exec(trimmed);
+  return match ? match[2] : trimmed;
+}
+
 function buildPolicyResolver(servers: ProxyServer[]): (name: string) => string {
   const builtins = new Map<string, string>();
   for (const server of servers) {
-    if (server.type === 'direct') builtins.set(server.name, 'DIRECT');
-    if (server.type === 'reject') builtins.set(server.name, 'REJECT');
+    if (server.type === 'direct') builtins.set(unquote(server.name), 'DIRECT');
+    if (server.type === 'reject') builtins.set(unquote(server.name), 'REJECT');
   }
-  return (name) => {
+  return (rawName) => {
+    const name = unquote(rawName);
     const upper = name.toUpperCase();
     if (upper === 'DIRECT') return 'DIRECT';
     if (upper === 'REJECT' || upper.startsWith('REJECT-')) return 'REJECT';
@@ -149,7 +157,7 @@ function buildClashProxyGroup(
   resolve: (name: string) => string
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {
-    name: group.name,
+    name: unquote(group.name),
     type: group.type,
     proxies: [...new Set(group.members.map(resolve))],
   };
@@ -170,7 +178,7 @@ function buildClashRule(rule: Rule, resolve: (name: string) => string): string {
   if (rule.value === undefined || rule.value === null) {
     return `${rule.type},${target}`;
   }
-  return `${rule.type},${rule.value},${target}`;
+  return `${rule.type},${unquote(String(rule.value))},${target}`;
 }
 
 /**

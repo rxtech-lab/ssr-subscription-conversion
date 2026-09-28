@@ -328,7 +328,8 @@ function parseRules(lines: string[]): Rule[] {
     // Remove trailing comma if any
     mainPart = mainPart.replace(/,\s*$/, '');
 
-    const parts = mainPart.split(',').map((s) => s.trim());
+    // tokenize strips quotes around values like "🤖 AI"
+    const parts = tokenize(mainPart);
 
     if (parts.length < 2) continue;
 

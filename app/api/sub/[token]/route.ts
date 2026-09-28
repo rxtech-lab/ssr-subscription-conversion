@@ -115,7 +115,8 @@ export async function GET(
   return new Response(output, {
     headers: {
       "Content-Type": contentType,
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      // filename* lets clients read non-ASCII names without the quotes leaking in
+      "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
     },
   });
 }

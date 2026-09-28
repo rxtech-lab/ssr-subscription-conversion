@@ -126,13 +126,32 @@ function buildClashProxy(server: ProxyServer): Record<string, unknown> | null {
   return base;
 }
 
+/**
+ * Clash has no named direct/reject proxies (they are dropped from `proxies`),
+ * so references to them must point at the built-in DIRECT/REJECT policies.
+ */
+function buildPolicyResolver(servers: ProxyServer[]): (name: string) => string {
+  const builtins = new Map<string, string>();
+  for (const server of servers) {
+    if (server.type === 'direct') builtins.set(server.name, 'DIRECT');
+    if (server.type === 'reject') builtins.set(server.name, 'REJECT');
+  }
+  return (name) => {
+    const upper = name.toUpperCase();
+    if (upper === 'DIRECT') return 'DIRECT';
+    if (upper === 'REJECT' || upper.startsWith('REJECT-')) return 'REJECT';
+    return builtins.get(name) ?? name;
+  };
+}
+
 function buildClashProxyGroup(
-  group: ProxyGroup
+  group: ProxyGroup,
+  resolve: (name: string) => string
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {
     name: group.name,
     type: group.type,
-    proxies: group.members,
+    proxies: [...new Set(group.members.map(resolve))],
   };
 
   for (const [key, value] of Object.entries(group.settings)) {
@@ -142,15 +161,16 @@ function buildClashProxyGroup(
   return result;
 }
 
-function buildClashRule(rule: Rule): string {
+function buildClashRule(rule: Rule, resolve: (name: string) => string): string {
+  const target = resolve(rule.target);
   // Surge's FINAL maps to Clash's MATCH
   if (rule.type === 'FINAL') {
-    return `MATCH,${rule.target}`;
+    return `MATCH,${target}`;
   }
   if (rule.value === undefined || rule.value === null) {
-    return `${rule.type},${rule.target}`;
+    return `${rule.type},${target}`;
   }
-  return `${rule.type},${rule.value},${rule.target}`;
+  return `${rule.type},${rule.value},${target}`;
 }
 
 /**
@@ -179,6 +199,8 @@ export function generateClash(config: SubscriptionConfig): string {
     }
   }
 
+  const resolvePolicy = buildPolicyResolver(config.servers);
+
   // Proxies
   const proxies = config.servers
     .map(buildClashProxy)
@@ -190,12 +212,12 @@ export function generateClash(config: SubscriptionConfig): string {
 
   // Proxy Groups
   if (config.proxyGroups.length > 0) {
-    doc['proxy-groups'] = config.proxyGroups.map(buildClashProxyGroup);
+    doc['proxy-groups'] = config.proxyGroups.map((g) => buildClashProxyGroup(g, resolvePolicy));
   }
 
   // Rules
   if (config.rules.length > 0) {
-    doc['rules'] = config.rules.map(buildClashRule);
+    doc['rules'] = config.rules.map((r) => buildClashRule(r, resolvePolicy));
   }
 
   // Hosts

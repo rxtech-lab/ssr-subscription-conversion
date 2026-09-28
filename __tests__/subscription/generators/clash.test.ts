@@ -305,3 +305,39 @@ describe('generateClash - Surge-style VMess/Trojan settings', () => {
     expect(trojan.udp).toBe(true);
   });
 });
+
+describe('generateClash - named direct/reject policies', () => {
+  const config: SubscriptionConfig = {
+    general: {},
+    servers: [
+      { name: 'HK', type: 'ss', server: 'hk.example.com', port: 443, settings: { 'encrypt-method': 'aes-128-gcm', password: 'x' } },
+      { name: '🎯 全球直连', type: 'direct', settings: {} },
+      { name: '⛔️ 拦截', type: 'reject', settings: {} },
+    ],
+    proxyGroups: [
+      { name: '🔰 节点选择', type: 'select', members: ['HK', '🎯 全球直连', 'DIRECT'], settings: {} },
+    ],
+    rules: [
+      { type: 'DOMAIN-SUFFIX', value: 'ads.com', target: '⛔️ 拦截' },
+      { type: 'DOMAIN-SUFFIX', value: 'tracker.com', target: 'REJECT-TINYGIF' },
+      { type: 'FINAL', target: '🎯 全球直连' },
+    ],
+    hosts: [],
+  };
+  const parsed = yaml.load(generateClash(config)) as {
+    'proxy-groups': { proxies: string[] }[];
+    rules: string[];
+  };
+
+  it('maps direct/reject server names to built-in policies in groups', () => {
+    expect(parsed['proxy-groups'][0].proxies).toEqual(['HK', 'DIRECT']);
+  });
+
+  it('maps direct/reject server names to built-in policies in rules', () => {
+    expect(parsed.rules).toEqual([
+      'DOMAIN-SUFFIX,ads.com,REJECT',
+      'DOMAIN-SUFFIX,tracker.com,REJECT',
+      'MATCH,DIRECT',
+    ]);
+  });
+});

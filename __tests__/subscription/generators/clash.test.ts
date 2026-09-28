@@ -341,3 +341,19 @@ describe('generateClash - named direct/reject policies', () => {
     ]);
   });
 });
+
+describe('generateClash - quoted policy names', () => {
+  it('strips quotes from rule targets and values', () => {
+    const output = generateClash({
+      general: {},
+      servers: [],
+      proxyGroups: [{ name: '🤖 人工智能', type: 'select', members: ['DIRECT'], settings: {} }],
+      rules: [
+        { type: 'PROCESS-NAME', value: '"/Applications/My App.app/Contents/MacOS/My App"', target: '"🤖 人工智能"' },
+      ],
+      hosts: [],
+    });
+    const parsed = yaml.load(output) as { rules: string[] };
+    expect(parsed.rules).toEqual(['PROCESS-NAME,/Applications/My App.app/Contents/MacOS/My App,🤖 人工智能']);
+  });
+});

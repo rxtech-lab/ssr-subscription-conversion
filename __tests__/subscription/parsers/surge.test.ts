@@ -238,3 +238,11 @@ DOMAIN-SET,https://example.com/domains.txt,Proxy // External domain list`);
     });
   });
 });
+
+describe('parseSurge - quoted rule targets', () => {
+  it('strips quotes around rule values and policy names', () => {
+    const result = parseSurge('[Rule]\nPROCESS-NAME,/Apps/Foo,"🤖 人工智能"\nFINAL,"🐟 漏网之鱼"\n');
+    expect(result.rules[0]).toMatchObject({ type: 'PROCESS-NAME', value: '/Apps/Foo', target: '🤖 人工智能' });
+    expect(result.rules[1]).toMatchObject({ type: 'FINAL', target: '🐟 漏网之鱼' });
+  });
+});

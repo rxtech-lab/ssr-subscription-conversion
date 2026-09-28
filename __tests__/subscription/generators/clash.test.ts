@@ -354,6 +354,54 @@ describe('generateClash - quoted policy names', () => {
       hosts: [],
     });
     const parsed = yaml.load(output) as { rules: string[] };
-    expect(parsed.rules).toEqual(['PROCESS-NAME,/Applications/My App.app/Contents/MacOS/My App,🤖 人工智能']);
+    expect(parsed.rules).toEqual(['PROCESS-PATH,/Applications/My App.app/Contents/MacOS/My App,🤖 人工智能']);
+  });
+});
+
+describe('generateClash - Surge-only rule types', () => {
+  const rule = (type: string, value: string | undefined, target = 'DIRECT') => ({ type, value, target });
+  const output = generateClash({
+    general: { loglevel: 'notify' },
+    servers: [],
+    proxyGroups: [],
+    rules: [
+      rule('DOMAIN-WILDCARD', '*.binance.*'),
+      rule('USER-AGENT', 'Instagram*'),
+      rule('URL-REGEX', '^http://a'),
+      rule('DEST-PORT', '25', 'REJECT'),
+      rule('SRC-IP', '192.168.1.1'),
+      rule('AND', '((DOMAIN,a.com),(DEST-PORT,443))'),
+      rule('RULE-SET', 'https://example.com/a.list'),
+      rule('DOMAIN-SET', 'https://example.com/b.txt', 'REJECT'),
+      rule('RULE-SET', 'LAN'),
+      rule('RULE-SET', 'SYSTEM'),
+    ],
+    hosts: [],
+  });
+  const parsed = yaml.load(output) as {
+    'log-level': string;
+    rules: string[];
+    'rule-providers': Record<string, { behavior: string; url: string }>;
+  };
+
+  it('maps Surge log level to a Clash one', () => {
+    expect(parsed['log-level']).toBe('info');
+  });
+
+  it('converts, renames, and drops rules for Clash', () => {
+    expect(parsed.rules).toEqual([
+      'DOMAIN-REGEX,^.*\\.binance\\..*$,DIRECT',
+      'DST-PORT,25,REJECT',
+      'SRC-IP-CIDR,192.168.1.1/32,DIRECT',
+      'AND,((DOMAIN,a.com),(DST-PORT,443)),DIRECT',
+      'RULE-SET,ruleset-1,DIRECT',
+      'RULE-SET,domainset-2,REJECT',
+      'GEOIP,LAN,DIRECT',
+    ]);
+  });
+
+  it('registers rule providers for RULE-SET and DOMAIN-SET URLs', () => {
+    expect(parsed['rule-providers']['ruleset-1']).toMatchObject({ behavior: 'classical', url: 'https://example.com/a.list' });
+    expect(parsed['rule-providers']['domainset-2']).toMatchObject({ behavior: 'domain', url: 'https://example.com/b.txt' });
   });
 });

@@ -311,6 +311,29 @@ function normalizeGroupType(
  *   - `FINAL,target`
  *   - `FINAL,target // comment`
  */
+/**
+ * Split a rule line into parts. Logical rules (AND/OR/NOT) keep their
+ * parenthesized sub-rules as a single value, e.g.
+ * `AND,((DOMAIN,a.com),(DST-PORT,443)),Proxy` -> [AND, ((DOMAIN,a.com),(DST-PORT,443)), Proxy]
+ */
+function splitRule(line: string): string[] {
+  const firstComma = line.indexOf(',');
+  const head = firstComma >= 0 ? line.substring(0, firstComma).trim() : line.trim();
+  const rest = firstComma >= 0 ? line.substring(firstComma + 1).trim() : '';
+
+  if (/^(AND|OR|NOT)$/i.test(head) && rest.startsWith('(')) {
+    let depth = 0;
+    for (let i = 0; i < rest.length; i++) {
+      if (rest[i] === '(') depth++;
+      else if (rest[i] === ')' && --depth === 0) {
+        return [head, rest.substring(0, i + 1), ...tokenize(rest.substring(i + 1))];
+      }
+    }
+  }
+
+  return tokenize(line);
+}
+
 function parseRules(lines: string[]): Rule[] {
   const rules: Rule[] = [];
 
@@ -328,8 +351,8 @@ function parseRules(lines: string[]): Rule[] {
     // Remove trailing comma if any
     mainPart = mainPart.replace(/,\s*$/, '');
 
-    // tokenize strips quotes around values like "🤖 AI"
-    const parts = tokenize(mainPart);
+    // Quotes around values like "🤖 AI" are stripped
+    const parts = splitRule(mainPart);
 
     if (parts.length < 2) continue;
 

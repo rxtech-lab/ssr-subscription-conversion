@@ -21,6 +21,14 @@ const CLASH_GENERAL_KEYS = new Set([
   'ipv6',
 ]);
 
+/** Surge log levels mapped to Clash's (silent, error, warning, info, debug) */
+const LOG_LEVEL_MAP: Record<string, string> = {
+  verbose: 'debug',
+  info: 'info',
+  notify: 'info',
+  warning: 'warning',
+};
+
 /** SS settings that map to specific Clash proxy keys */
 const SS_KEY_MAP: Record<string, string> = {
   'encrypt-method': 'cipher',
@@ -126,10 +134,6 @@ function buildClashProxy(server: ProxyServer): Record<string, unknown> | null {
   return base;
 }
 
-/**
- * Clash has no named direct/reject proxies (they are dropped from `proxies`),
- * so references to them must point at the built-in DIRECT/REJECT policies.
- */
 /** Strip surrounding quotes that Surge allows around names and values. */
 function unquote(value: string): string {
   const trimmed = value.trim();
@@ -137,6 +141,10 @@ function unquote(value: string): string {
   return match ? match[2] : trimmed;
 }
 
+/**
+ * Clash has no named direct/reject proxies (they are dropped from `proxies`),
+ * so references to them must point at the built-in DIRECT/REJECT policies.
+ */
 function buildPolicyResolver(servers: ProxyServer[]): (name: string) => string {
   const builtins = new Map<string, string>();
   for (const server of servers) {
@@ -169,16 +177,110 @@ function buildClashProxyGroup(
   return result;
 }
 
-function buildClashRule(rule: Rule, resolve: (name: string) => string): string {
+/** Surge rule types with a different name in Clash (mihomo) */
+const RULE_TYPE_MAP: Record<string, string> = {
+  'DEST-PORT': 'DST-PORT',
+  'SRC-IP': 'SRC-IP-CIDR',
+};
+
+/** Surge-only rule types that Clash (mihomo) rejects; these rules are dropped */
+const UNSUPPORTED_RULE_TYPES = new Set([
+  'USER-AGENT',
+  'URL-REGEX',
+  'PROTOCOL',
+  'SUBNET',
+  'CELLULAR-RADIO',
+  'CELLULAR-CARRIER',
+  'DEVICE-NAME',
+  'HOSTNAME-TYPE',
+  'SCRIPT',
+]);
+
+/** Surge built-in rule sets that have no Clash rule-provider equivalent */
+const BUILTIN_RULE_SETS: Record<string, string | null> = {
+  LAN: 'GEOIP,LAN',
+  SYSTEM: null,
+};
+
+/** Convert a Surge wildcard pattern (`*`, `?`) to an anchored regex. */
+function wildcardToRegex(pattern: string): string {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+  return `^${escaped.replace(/\*/g, '.*').replace(/\?/g, '.')}$`;
+}
+
+type RuleProviders = Record<string, Record<string, unknown>>;
+
+/**
+ * Convert a Surge rule to a Clash rule string. Returns null for rules Clash
+ * cannot express. RULE-SET/DOMAIN-SET URLs are registered in `providers`.
+ */
+function buildClashRule(
+  rule: Rule,
+  resolve: (name: string) => string,
+  providers: RuleProviders
+): string | null {
   const target = resolve(rule.target);
+  const type = rule.type.toUpperCase();
+
   // Surge's FINAL maps to Clash's MATCH
-  if (rule.type === 'FINAL') {
+  if (type === 'FINAL') {
     return `MATCH,${target}`;
   }
-  if (rule.value === undefined || rule.value === null) {
-    return `${rule.type},${target}`;
+  if (UNSUPPORTED_RULE_TYPES.has(type)) {
+    return null;
   }
-  return `${rule.type},${unquote(String(rule.value))},${target}`;
+  if (rule.value === undefined || rule.value === null) {
+    return `${type},${target}`;
+  }
+
+  let value = unquote(String(rule.value));
+  let clashType = RULE_TYPE_MAP[type] ?? type;
+
+  switch (type) {
+    case 'AND':
+    case 'OR':
+    case 'NOT':
+      // Rename Surge-only rule types inside sub-rules, e.g. (DEST-PORT,443)
+      value = value.replace(/\(\s*([A-Z-]+)\s*,/gi, (match, subType: string) => {
+        const mapped = RULE_TYPE_MAP[subType.toUpperCase()];
+        return mapped ? `(${mapped},` : match;
+      });
+      break;
+    case 'DOMAIN-WILDCARD':
+      // Older mihomo cores (bundled with Clash Verge) lack DOMAIN-WILDCARD
+      clashType = 'DOMAIN-REGEX';
+      value = wildcardToRegex(value);
+      break;
+    case 'SRC-IP':
+      if (!value.includes('/')) value += value.includes(':') ? '/128' : '/32';
+      break;
+    case 'PROCESS-NAME':
+      // Surge matches full paths with PROCESS-NAME; Clash uses PROCESS-PATH
+      if (value.includes('/') || value.includes('\\')) clashType = 'PROCESS-PATH';
+      break;
+    case 'RULE-SET':
+    case 'DOMAIN-SET': {
+      const builtin = BUILTIN_RULE_SETS[value.toUpperCase()];
+      if (builtin !== undefined) {
+        return builtin === null ? null : `${builtin},${target}`;
+      }
+      if (!/^https?:\/\//i.test(value)) return null;
+      const name = `${type === 'DOMAIN-SET' ? 'domainset' : 'ruleset'}-${Object.keys(providers).length + 1}`;
+      providers[name] = {
+        type: 'http',
+        behavior: type === 'DOMAIN-SET' ? 'domain' : 'classical',
+        format: 'text',
+        url: value,
+        path: `./ruleset/${name}.txt`,
+        interval: 86400,
+      };
+      clashType = 'RULE-SET';
+      value = name;
+      break;
+    }
+  }
+
+  return `${clashType},${value},${target}`;
 }
 
 /**
@@ -203,7 +305,10 @@ export function generateClash(config: SubscriptionConfig): string {
   for (const [key, value] of Object.entries(config.general)) {
     const clashKey = GENERAL_KEY_MAP[key] || key;
     if (CLASH_GENERAL_KEYS.has(clashKey)) {
-      doc[clashKey] = coerceValue(value);
+      doc[clashKey] =
+        clashKey === 'log-level'
+          ? LOG_LEVEL_MAP[String(value).toLowerCase()] ?? 'info'
+          : coerceValue(value);
     }
   }
 
@@ -225,7 +330,14 @@ export function generateClash(config: SubscriptionConfig): string {
 
   // Rules
   if (config.rules.length > 0) {
-    doc['rules'] = config.rules.map((r) => buildClashRule(r, resolvePolicy));
+    const providers: RuleProviders = {};
+    const rules = config.rules
+      .map((r) => buildClashRule(r, resolvePolicy, providers))
+      .filter((r): r is string => r !== null);
+    if (Object.keys(providers).length > 0) {
+      doc['rule-providers'] = providers;
+    }
+    doc['rules'] = rules;
   }
 
   // Hosts

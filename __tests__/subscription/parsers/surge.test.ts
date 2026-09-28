@@ -246,3 +246,10 @@ describe('parseSurge - quoted rule targets', () => {
     expect(result.rules[1]).toMatchObject({ type: 'FINAL', target: '🐟 漏网之鱼' });
   });
 });
+
+describe('parseSurge - logical rules', () => {
+  it('keeps parenthesized sub-rules as one value', () => {
+    const result = parseSurge('[Rule]\nAND,((DOMAIN,a.com),(DEST-PORT,443)),Proxy\n');
+    expect(result.rules[0]).toMatchObject({ type: 'AND', value: '((DOMAIN,a.com),(DEST-PORT,443))', target: 'Proxy' });
+  });
+});

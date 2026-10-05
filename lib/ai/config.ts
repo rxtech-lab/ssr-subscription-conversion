@@ -1,4 +1,4 @@
-export const MODEL_ID = "google/gemini-3.1-pro-preview"; // e.g. "anthropic:claude-sonnet-4-20250514"
+export const MODEL_ID = "openai/gpt-6-luna";
 
 export const SYSTEM_PROMPT = `You are a subscription config management assistant. You help users manage their proxy subscription configurations through natural language.
 
